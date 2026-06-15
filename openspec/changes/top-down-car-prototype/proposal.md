@@ -26,7 +26,7 @@ Out of scope for this change (deferred to later milestones): tracks/collision wa
 ## Impact
 
 - **New project scaffold**: Godot 4.6.x project files (`project.godot`, input map, export presets stubs), `.gitignore` for Godot.
-- **Assets**: One imported Kenney car model (glTF) plus license attribution.
+- **Assets**: One imported car model (glTF) from Kenney's Car Kit (https://kenney.nl/assets/car-kit), plus license attribution.
 - **New scenes/scripts**: player car scene + GDScript controller, camera rig, a flat test ground scene that wires them together.
 - **Dependencies**: Godot 4.6.x engine; no third-party libraries.
 - **No existing code affected** — this is the first code in the repo.

@@ -6,7 +6,7 @@
 
 ## 2. Assets
 
-- [ ] 2.1 Download one Kenney car model (Car Kit / Racing Kit) and import the glTF into `assets/`
+- [ ] 2.1 Extract a car model from the local `kenney_car-kit.zip` (Kenney Car Kit, https://kenney.nl/assets/car-kit) — use the GLB format folder — and import the `.glb` into `assets/`
 - [ ] 2.2 Add Kenney license/attribution file alongside the assets
 - [ ] 2.3 Verify the car mesh imports with correct scale and orientation in a test scene
 
