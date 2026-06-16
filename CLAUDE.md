@@ -1,10 +1,19 @@
 # CLAUDE.md
 
-Project-specific guidance for nitro-buggies (Godot 4.6, GDScript). Godot binary is at `~/.local/bin/godot`.
+Project-specific guidance for nitro-buggies (Godot 4.6, GDScript). Godot 4.6 stable is installed at `~/.local/bin/godot` (downloaded from the GitHub release; not on PATH in non-login shells — use the full path).
 
 ## Verifying changes
 
-Headless validation tools live in `tools/` (e.g. `drive_test.gd`, `landing_test.gd`). Run them with `godot --headless -s tools/<name>.gd`. Headless input still propagates — `Input.parse_input_event(InputEventAction…)` reaches `_unhandled_input`, so behavior like ENTER → scene-change is testable headless even though pixels aren't.
+Validate the project headlessly, without the editor:
+
+- `godot --headless --import` — import assets; must finish with no error/warning.
+- `godot --headless -s tools/drive_test.gd` — behavioral test harness: loads `Main.tscn`, drives via `Input.action_press`, asserts accel/reverse/steer/drift/frame-rate-independence/camera-follow/pause. Prints PASS/FAIL, exits 1 on failure.
+- `godot --headless -s tools/inspect_car.gd` — prints the car mesh AABB (scale/orientation).
+- `godot --headless -s tools/landing_test.gd` — landing-screen smoke + ENTER→scene-change.
+
+Headless input still propagates — `Input.parse_input_event(InputEventAction…)` reaches `_unhandled_input`, so behavior like ENTER → scene-change is testable headless even though pixels aren't.
+
+What still needs a human with hardware: literal gamepad analog input and controller hotplug. Everything else is machine-verifiable.
 
 ### Screenshotting UI (visual verification)
 
