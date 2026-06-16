@@ -1,1 +1,11 @@
+# Source asset archive (models extracted into assets/)
 kenney_car-kit.zip
+
+# Godot 4 — engine-generated import cache and editor state
+.godot/
+
+# Exported builds
+/export/
+/build/
+*.exe
+*.pck

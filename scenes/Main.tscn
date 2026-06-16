@@ -1,0 +1,39 @@
+[gd_scene load_steps=7 format=3 uid="uid://mainbuggy0scene"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" uid="uid://carbuggy0main" path="res://scenes/Car.tscn" id="2_car"]
+[ext_resource type="Script" path="res://scripts/camera.gd" id="3_cam"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(200, 200)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.27, 0.42, 0.28, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(200, 0.2, 200)
+
+[node name="Main" type="Node3D"]
+process_mode = 3
+script = ExtResource("1_main")
+
+[node name="Ground" type="StaticBody3D" parent="."]
+
+[node name="GroundMesh" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("PlaneMesh_ground")
+material_override = SubResource("Mat_ground")
+
+[node name="GroundCollision" type="CollisionShape3D" parent="Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+shape = SubResource("BoxShape3D_ground")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7071, -0.7071, 0, 0.7071, 0.7071, 0, 30, 0)
+shadow_enabled = true
+
+[node name="Car" parent="." instance=ExtResource("2_car")]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.521, -0.853, 0, 0.853, 0.521, 0, 18, 11)
+current = true
+script = ExtResource("3_cam")
