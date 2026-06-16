@@ -62,6 +62,10 @@ func _run() -> void:
 		await process_frame
 	_check("ENTER (ui_accept) starts the main game",
 		current_scene != null and current_scene.scene_file_path.ends_with("Main.tscn"))
+	# ENTER also confirms the highlighted vehicle into the Selection autoload.
+	var selection := get_root().get_node("Selection")
+	_check("ENTER recorded a chosen vehicle",
+		selection != null and selection.selected_model_path.ends_with(".glb"))
 
 	print("\n==== RESULT ====")
 	if failures.is_empty():

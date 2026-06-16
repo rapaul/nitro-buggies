@@ -19,6 +19,26 @@ extends CharacterBody3D
 @export var grip := 9.0                 ## lateral grip rate (higher = tracks heading)
 @export var handbrake_grip := 1.5       ## reduced grip while handbraking (produces drift)
 
+const FALLBACK_MODEL := "res://assets/race.glb"
+
+
+func _ready() -> void:
+	# Swap the visual mesh to the vehicle chosen on the landing screen. The
+	# collision shape is intentionally left as-is for v1. Falls back to the
+	# default model if the selected one fails to load.
+	var packed: PackedScene = load(Selection.selected_model_path)
+	if packed == null:
+		packed = load(FALLBACK_MODEL)
+	if packed == null:
+		return
+	var old := get_node_or_null("Mesh")
+	if old:
+		remove_child(old)
+		old.queue_free()
+	var mesh := packed.instantiate()
+	mesh.name = "Mesh"
+	add_child(mesh)
+
 
 func _physics_process(delta: float) -> void:
 	# Device-agnostic analog input. Keyboard keys report full magnitude,
