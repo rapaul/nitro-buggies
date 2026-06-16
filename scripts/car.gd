@@ -37,7 +37,12 @@ func _ready() -> void:
 		old.queue_free()
 	var mesh := packed.instantiate()
 	mesh.name = "Mesh"
+	# The Kenney car-kit models are authored facing +Z, but the car's forward is
+	# -Z (see _physics_process). Without this the car drives tail-first. Flip the
+	# visual mesh 180° so its nose points along the direction of travel.
+	mesh.rotate_y(PI)
 	add_child(mesh)
+	CarSkin.apply(mesh)
 
 
 func _physics_process(delta: float) -> void:

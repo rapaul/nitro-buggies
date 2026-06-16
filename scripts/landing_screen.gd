@@ -228,6 +228,7 @@ func _build_preview(model_path: String, rect: Rect2) -> float:
 
 	var model: Node3D = (load(model_path) as PackedScene).instantiate()
 	spinner.add_child(model)
+	CarSkin.apply(model)
 	var aabb := _merged_aabb(model)
 	var center := aabb.get_center()
 	# Park the model's bottom-centre at the origin (the shared ground point).
