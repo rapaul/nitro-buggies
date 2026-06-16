@@ -7,8 +7,15 @@ config_version=5
 
 config/name="Nitro Buggies"
 config/description="Top-down 3D car racing — prototype milestone."
-run/main_scene="res://scenes/Main.tscn"
+run/main_scene="res://scenes/LandingScreen.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1152
+window/size/viewport_height=648
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [physics]
 
