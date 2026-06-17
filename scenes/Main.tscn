@@ -16,8 +16,10 @@ sky_material = SubResource("Sky_mat")
 [sub_resource type="Environment" id="Env_res"]
 background_mode = 2
 sky = SubResource("Sky_res")
-ambient_light_source = 3
-ambient_light_energy = 0.5
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.62, 0.78, 1)
+ambient_light_energy = 0.7
+ssao_enabled = true
 
 [node name="Main" type="Node3D"]
 process_mode = 3
@@ -33,7 +35,9 @@ environment = SubResource("Env_res")
 [node name="GroundCollision" type="CollisionShape3D" parent="Ground"]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.7071, -0.7071, 0, 0.7071, 0.7071, 0, 30, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 30, 0)
+light_color = Color(1, 0.86, 0.62, 1)
+light_energy = 1.5
 shadow_enabled = true
 
 [node name="Car" parent="." instance=ExtResource("2_car")]

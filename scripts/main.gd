@@ -15,7 +15,18 @@ func _ready() -> void:
 	# Wire the follow camera to the car. Done in code because node-reference
 	# exports don't resolve reliably from a hand-authored .tscn NodePath.
 	$Camera3D.target = $Car
+	_orient_sun()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
+
+
+func _orient_sun() -> void:
+	# Low (~14°) warm sun raking across the X-running ridges (travels mostly -Z).
+	# Set in code via look_at because the .tscn 12-float Transform3D is row-major,
+	# which makes a hand-authored rotation easy to transpose by mistake.
+	var el := deg_to_rad(14.0)
+	var horiz := Vector2(0.186, -0.982).normalized() * cos(el)
+	var dir := Vector3(horiz.x, -sin(el), horiz.y)
+	$DirectionalLight3D.look_at($DirectionalLight3D.global_position + dir)
 
 
 func _build_terrain() -> void:
@@ -25,8 +36,26 @@ func _build_terrain() -> void:
 	$Ground/GroundMesh.mesh = _build_mesh()
 
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = SAND
+	mat.albedo_color = Color.WHITE
 	mat.roughness = 1.0
+
+	# Large-scale tonal variation so the sand reads as a surface rather than one
+	# flat colour. A procedural noise, colour-ramped between a slightly darker and
+	# a slightly lighter sand (bracketing SAND so the base tone is preserved, not
+	# darkened), sampled triplanar from world position — no UVs on the mesh.
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.frequency = 0.5
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(0.75, 0.56, 0.32))  # a touch below SAND
+	ramp.set_color(1, Color(0.83, 0.64, 0.39))  # a touch above SAND
+	var ntex := NoiseTexture2D.new()
+	ntex.noise = noise
+	ntex.color_ramp = ramp
+	mat.albedo_texture = ntex
+	mat.uv1_triplanar = true
+	mat.uv1_scale = Vector3(0.06, 0.06, 0.06)  # ~16 m features: gentle mottling, not puddles
+
 	$Ground/GroundMesh.material_override = mat
 
 	$Ground/GroundCollision.shape = _build_collision()

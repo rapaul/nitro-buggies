@@ -1,10 +1,4 @@
-# dune-terrain
-
-## Purpose
-
-Define the rolling sand-dune landscape that replaces the flat ground plane — an undulating heightfield surface with conforming collision, a sandy appearance, and crests shaped to launch a fast-moving car into the air.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Rolling sand-dune surface
 The gameplay world SHALL present a continuous, undulating sand-dune surface in place of a flat ground plane. The dunes SHALL form **elongated ridges** — crest lines that run long in one horizontal direction — rather than a field of discrete rounded hills. Successive ridges SHALL be **spaced further apart** than a field of small bumps, and each dune face SHALL be **gentle enough that climbing it from trough to crest takes a sustained ascent** (a low slope per metre travelled), not a short steep step.
@@ -16,6 +10,8 @@ The gameplay world SHALL present a continuous, undulating sand-dune surface in p
 #### Scenario: Ridges are widely spaced with gentle faces
 - **WHEN** the car drives from a trough toward the next crest
 - **THEN** the crest is reached only after a sustained climb across a wide, gently sloped face, rather than immediately cresting a short steep bump
+
+## ADDED Requirements
 
 ### Requirement: Sandy desert appearance
 The terrain SHALL read as warm golden desert sand under a low, golden-hour sun that produces clear relief, not as a uniformly lit flat color, and the surrounding sky/horizon SHALL read as a pale, hazy warm desert sky. The scene SHALL be lit so that sun-facing dune slopes catch warm direct light while slopes facing away from the sun fall into ambient-only ("diffuse") shading lit by a dimmer, cooler sky fill, producing a visible terminator across the dune faces. The directional sun SHALL rake **across** the ridge lines (the ridges run long in one horizontal direction; the sun's horizontal travel SHALL be roughly perpendicular to them) so that successive ridges alternate lit and shaded rather than being evenly flat. The troughs between ridges SHALL receive contact shading (e.g. SSAO) so the hollows read as recessed. The sand albedo SHALL carry large-scale tonal variation across the surface so it does not read as a single flat color, while still keeping the car and the flat spawn corridor clearly readable from the chase camera.
@@ -35,28 +31,6 @@ The terrain SHALL read as warm golden desert sand under a low, golden-hour sun t
 #### Scenario: Gameplay view stays readable
 - **WHEN** the car is driven across the dune field under the golden-hour lighting
 - **THEN** the car and the flat spawn corridor remain clearly visible (the shadowed faces are darkened but not crushed to black)
-
-### Requirement: Terrain collision
-The dune surface SHALL have collision that conforms to its shape so the car rests on and drives along the actual contour of the dunes, with no gaps the car can fall through within the play area.
-
-#### Scenario: Car rests on the surface contour
-- **WHEN** the car is placed anywhere within the play area and left under gravity
-- **THEN** it comes to rest on the dune surface at that location's height rather than passing through it or floating above it
-
-#### Scenario: Collision tracks the visible shape
-- **WHEN** the car drives from a trough up a dune face
-- **THEN** its supported height rises in step with the visible slope, matching where the surface is drawn
-
-### Requirement: Jumpable crests
-At least some dune crests SHALL be shaped so that a car approaching at high speed leaves the surface at the crest, producing a jump, rather than the terrain being so gentle that the car never becomes airborne. Because the faces are gentler than before, the crest itself MAY require a higher approach speed to launch, but a jump at full throttle SHALL remain achievable.
-
-#### Scenario: Crest launches a fast car
-- **WHEN** the car climbs a dune face at full throttle and passes over a crest
-- **THEN** the terrain shape allows the car to leave the ground at the crest and travel through the air before landing
-
-#### Scenario: Bounded, traversable play area
-- **WHEN** the car drives across the play area
-- **THEN** the dunes remain drivable (no walls so steep the car cannot climb or descend them at normal speed) across the full bounded area
 
 ### Requirement: Wind-ripple banding (optional)
 The terrain MAY display wind-ripple banding across the dune faces to evoke a sand sea. This sub-requirement is satisfied either by visible ripple banding OR by being intentionally dropped — it SHALL only be implemented if a prototype confirms the banding actually reads at the gameplay chase-camera distance. If implemented, the ripples SHALL be expressed primarily through albedo light/dark banding (not solely a normal map, which prototyping showed is invisible at this distance) and SHALL run roughly perpendicular to the prevailing slope rather than as isotropic noise.
