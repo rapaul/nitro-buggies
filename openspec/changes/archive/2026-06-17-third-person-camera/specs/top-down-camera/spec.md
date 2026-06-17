@@ -1,10 +1,4 @@
-# top-down-camera
-
-## Purpose
-
-Provide a third-person chase camera that sits low and close behind the player car, looking forward along the car's heading, and smoothly follows the car's position and orientation without jitter.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: High-angle top-down view
 The camera SHALL be positioned as a third-person chase camera that sits low and close behind the player car, looking forward along the car's heading so the horizon is visible, rather than framing the scene from a high overhead top-down angle.

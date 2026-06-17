@@ -117,7 +117,7 @@ func _test_framerate_independence() -> void:
 func _test_camera_follow() -> void:
 	var cam: Camera3D = main.get_node("Camera3D")
 	_reset(Vector3(0, 0, -60))  # teleport car away; camera must catch up
-	var want: Vector3 = car.global_position + cam.offset
+	var want: Vector3 = car.global_position + Basis(Vector3.UP, car.rotation.y) * cam.offset
 	await _steps(150)
 	var dist := cam.global_position.distance_to(want)
 	_check("Camera: eases to follow the car", dist < 1.0, "dist_to_offset=%.3f" % dist)
