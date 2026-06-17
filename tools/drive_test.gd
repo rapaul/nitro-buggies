@@ -153,9 +153,9 @@ func _test_gravity_rest() -> void:
 
 
 func _test_slope_follow() -> void:
-	# Climb the x=10 ramp (trough z=30 -> crest z=10) at moderate speed: height
+	# Climb the x=40 ramp (trough z=52.5 -> crest z=17.5) at moderate speed: height
 	# should rise following the contour while the car stays attached to the surface.
-	_reset(Vector3(10, 0, 26))
+	_reset(Vector3(40, 0, 46))
 	var y0 := car.global_position.y
 	Input.action_press("accelerate", 0.5)
 	var max_clear := 0.0
@@ -172,13 +172,15 @@ func _test_slope_follow() -> void:
 
 func _test_jump_off_crest() -> void:
 	# Full throttle up the ramp: the car should leave the crest and travel through
-	# the air (clearance well above the surface for several ticks) then land.
-	_reset(Vector3(10, 0, 30))
+	# the air (clearance well above the surface for several ticks) then land. The
+	# long, gentle face means a longer climb before launch and a bigger arc, so the
+	# window matches the air-righting test (240 ticks) to catch the landing.
+	_reset(Vector3(40, 0, 52.5))
 	Input.action_press("accelerate", 1.0)
 	var max_clear := 0.0
 	var airborne_ticks := 0
 	var landed := false
-	for i in 180:
+	for i in 240:
 		await physics_frame
 		var p := car.global_position
 		var clear := p.y - Dune.height(p.x, p.z)
@@ -196,7 +198,7 @@ func _test_jump_off_crest() -> void:
 func _test_slow_stays_grounded() -> void:
 	# Approach the same crest gently: low crest speed should hug the contour and
 	# never launch.
-	_reset(Vector3(10, 0, 16))
+	_reset(Vector3(40, 0, 24))
 	Input.action_press("accelerate", 0.3)
 	var max_clear := 0.0
 	for i in 90:
@@ -221,10 +223,10 @@ func _test_camera_follow() -> void:
 
 
 func _test_terrain_orientation() -> void:
-	# Climb the x=10 dune face; the visual mesh should tilt to the slope rather
+	# Climb the x=40 dune face; the visual mesh should tilt to the slope rather
 	# than staying level with the horizon.
 	var mesh := car.get_node("Mesh") as Node3D
-	_reset(Vector3(10, 0, 26))
+	_reset(Vector3(40, 0, 46))
 	Input.action_press("accelerate", 0.5)
 	var max_tilt := 0.0
 	for i in 60:
@@ -239,7 +241,7 @@ func _test_terrain_orientation() -> void:
 func _test_handling_unchanged() -> void:
 	# The slope tilt is mesh-only: the physics body must stay yaw-only (its up
 	# axis remains world-up) so acceleration/steering/grip are unaffected.
-	_reset(Vector3(10, 0, 26))
+	_reset(Vector3(40, 0, 46))
 	Input.action_press("accelerate", 0.6)
 	Input.action_press("steer_right", 0.5)
 	var max_body_tilt := 0.0
@@ -256,7 +258,7 @@ func _test_air_righting() -> void:
 	# Launch off the crest, then verify the mesh keeps rotating in the air
 	# (carries momentum, no instant snap) yet lands aligned to the surface.
 	var mesh := car.get_node("Mesh") as Node3D
-	_reset(Vector3(10, 0, 30))
+	_reset(Vector3(40, 0, 52.5))
 	Input.action_press("accelerate", 1.0)
 	var first_air_up := Vector3.ZERO
 	var last_air_up := Vector3.ZERO

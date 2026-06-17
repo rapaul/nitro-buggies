@@ -22,8 +22,11 @@ func _capture() -> void:
 		await process_frame
 	var cam := Camera3D.new()
 	get_root().add_child(cam)
-	cam.global_position = Vector3(70, 50, 90)
-	cam.look_at(Vector3(15, -2, 5), Vector3.UP)
+	# Sit over the full-amplitude ridge band (x~40) and look down the Z axis so the
+	# successive parallel ridges (crest lines run along X, repeat every WAVELENGTH_Z)
+	# recede across the frame.
+	cam.global_position = Vector3(40, 55, 110)
+	cam.look_at(Vector3(25, -3, -10), Vector3.UP)
 	cam.current = true
 	for i in 4:
 		await process_frame

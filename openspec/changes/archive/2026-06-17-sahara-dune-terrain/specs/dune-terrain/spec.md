@@ -1,10 +1,4 @@
-# dune-terrain
-
-## Purpose
-
-Define the rolling sand-dune landscape that replaces the flat ground plane — an undulating heightfield surface with conforming collision, a sandy appearance, and crests shaped to launch a fast-moving car into the air.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Rolling sand-dune surface
 The gameplay world SHALL present a continuous, undulating sand-dune surface in place of a flat ground plane. The dunes SHALL form **elongated ridges** — crest lines that run long in one horizontal direction — rather than a field of discrete rounded hills. Successive ridges SHALL be **spaced further apart** than a field of small bumps, and each dune face SHALL be **gentle enough that climbing it from trough to crest takes a sustained ascent** (a low slope per metre travelled), not a short steep step.
@@ -20,17 +14,6 @@ The gameplay world SHALL present a continuous, undulating sand-dune surface in p
 #### Scenario: Sandy appearance matches a warm desert palette
 - **WHEN** the gameplay scene is rendered
 - **THEN** the terrain reads as warm golden desert sand and the surrounding sky/horizon reads as a pale, hazy warm desert sky, evoking the Sahara reference rather than the previous pale-yellow ground
-
-### Requirement: Terrain collision
-The dune surface SHALL have collision that conforms to its shape so the car rests on and drives along the actual contour of the dunes, with no gaps the car can fall through within the play area.
-
-#### Scenario: Car rests on the surface contour
-- **WHEN** the car is placed anywhere within the play area and left under gravity
-- **THEN** it comes to rest on the dune surface at that location's height rather than passing through it or floating above it
-
-#### Scenario: Collision tracks the visible shape
-- **WHEN** the car drives from a trough up a dune face
-- **THEN** its supported height rises in step with the visible slope, matching where the surface is drawn
 
 ### Requirement: Jumpable crests
 At least some dune crests SHALL be shaped so that a car approaching at high speed leaves the surface at the crest, producing a jump, rather than the terrain being so gentle that the car never becomes airborne. Because the faces are gentler than before, the crest itself MAY require a higher approach speed to launch, but a jump at full throttle SHALL remain achievable.

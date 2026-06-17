@@ -5,9 +5,10 @@
 [ext_resource type="Script" path="res://scripts/camera.gd" id="3_cam"]
 
 [sub_resource type="ProceduralSkyMaterial" id="Sky_mat"]
-sky_horizon_color = Color(0.78, 0.74, 0.66, 1)
-ground_horizon_color = Color(0.78, 0.74, 0.66, 1)
-ground_bottom_color = Color(0.7, 0.62, 0.48, 1)
+sky_top_color = Color(0.8, 0.82, 0.84, 1)
+sky_horizon_color = Color(0.86, 0.82, 0.74, 1)
+ground_horizon_color = Color(0.86, 0.82, 0.74, 1)
+ground_bottom_color = Color(0.72, 0.6, 0.44, 1)
 
 [sub_resource type="Sky" id="Sky_res"]
 sky_material = SubResource("Sky_mat")

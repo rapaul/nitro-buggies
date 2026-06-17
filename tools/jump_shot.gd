@@ -20,7 +20,7 @@ func _initialize() -> void:
 
 func _capture() -> void:
 	var car: CharacterBody3D = get_root().get_node("Main/Car")
-	car.global_transform = Transform3D(Basis(), Vector3(10, Dune.height(10, 30) + 0.2, 30))
+	car.global_transform = Transform3D(Basis(), Vector3(40, Dune.height(40, 52.5) + 0.2, 52.5))
 	car.velocity = Vector3.ZERO
 	Input.action_press("accelerate", 1.0)
 	# Drive up the ramp and stop once well off the crest, so the shot catches the

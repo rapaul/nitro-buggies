@@ -7,7 +7,7 @@ const Dune := preload("res://scripts/dune_height.gd")
 
 const HALF := 100.0       ## play area extends +/- this on X and Z (200x200)
 const MESH_STEP := 2.0    ## visual grid spacing (m); collision is finer (1m)
-const SAND := Color(0.85, 0.72, 0.46)
+const SAND := Color(0.80, 0.60, 0.34)
 
 
 func _ready() -> void:
