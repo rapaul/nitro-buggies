@@ -39,6 +39,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 30, 0)
 light_color = Color(1, 0.86, 0.62, 1)
 light_energy = 1.5
 shadow_enabled = true
+shadow_blur = 1.5
+directional_shadow_max_distance = 500.0
 
 [node name="Car" parent="." instance=ExtResource("2_car")]
 
