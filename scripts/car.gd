@@ -19,6 +19,11 @@ extends CharacterBody3D
 @export var grip := 9.0                 ## lateral grip rate (higher = tracks heading)
 @export var handbrake_grip := 1.5       ## reduced grip while handbraking (produces drift)
 
+# --- Sand spray (visual only) ---
+@export var spray_speed_floor := 3.5    ## m/s below which driving raises no spray
+@export var spray_drift_threshold := 2.0 ## lateral m/s that triggers spray even when slow
+@export var spray_drift_ref := 8.0      ## lateral m/s that counts as a full-intensity drift
+
 # --- Vertical / airborne tuning ---
 @export var gravity := 22.0             ## m/s^2 downward pull
 @export var snap_length := 0.5          ## floor-snap distance that hugs slopes
@@ -42,6 +47,12 @@ var _mesh_q_prev := Quaternion.IDENTITY ## mesh rotation last tick (for takeoff 
 var _air_angvel := Vector3.ZERO         ## tumble carried into the air at takeoff
 var _air_time := 0.0                    ## seconds since takeoff
 var _was_airborne := false
+
+# Sand-spray emitters, one behind each rear wheel. Children of this body (which
+# only yaws), never of the visual mesh (whose basis is rewritten every tick for
+# tilt/tumble), so they stay put behind the wheels through slopes and jumps.
+var _spray_l: GPUParticles3D
+var _spray_r: GPUParticles3D
 
 const FALLBACK_MODEL := "res://assets/race.glb"
 
@@ -78,6 +89,7 @@ func _ready() -> void:
 	_mesh_scale = _mesh.transform.basis.get_scale()
 	_mesh_q = _mesh.transform.basis.get_rotation_quaternion()
 	_mesh_q_prev = _mesh_q
+	_setup_spray()
 
 
 func _physics_process(delta: float) -> void:
@@ -87,6 +99,7 @@ func _physics_process(delta: float) -> void:
 		# automatically via is_on_floor() on landing.
 		velocity.y -= gravity * delta
 		floor_snap_length = 0.0
+		_set_spray(false)  # no wheels on sand
 		move_and_slide()
 		_update_orientation(delta)
 		return
@@ -105,6 +118,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y = hspeed * launch_lift
 		floor_snap_length = 0.0
 		_prev_climb = false
+		_set_spray(false)  # leaving the ground
 		move_and_slide()
 		_update_orientation(delta)
 		return
@@ -161,6 +175,16 @@ func _physics_process(delta: float) -> void:
 	velocity.z = planar.z
 	floor_snap_length = snap_length
 	move_and_slide()
+
+	# Grounded sand spray: emit while driving fast enough or sliding sideways.
+	# Intensity follows the harder of the two (max, not sum) so a hard drift fans
+	# out without a straight-line blowout when both are high.
+	var spray_speed := Vector2(velocity.x, velocity.z).length()
+	var sliding := absf(lateral_speed) > spray_drift_threshold
+	var active := spray_speed > spray_speed_floor or sliding
+	var intensity := maxf(spray_speed / max_forward_speed, absf(lateral_speed) / spray_drift_ref)
+	_set_spray(active, intensity)
+
 	_update_orientation(delta)
 
 
@@ -234,3 +258,123 @@ func _angvel_between(prev_q: Quaternion, cur_q: Quaternion, delta: float) -> Vec
 
 func _set_mesh_rotation(q: Quaternion) -> void:
 	_mesh.transform.basis = Basis(q).scaled(_mesh_scale)
+
+
+func _setup_spray() -> void:
+	# Place two emitters at the rear wheels, derived from the loaded model's AABB
+	# (sizes differ across the kit and the model is swapped per selection, so this
+	# can't be a per-model constant). Forward is -Z, so the rear is +Z; wheels sit
+	# inboard of the bounding-box edges and near the ground (AABB min Y).
+	var aabb := _mesh_aabb()
+	var center := aabb.position + aabb.size * 0.5
+	var wheel_x := aabb.size.x * 0.35
+	var rear_z := center.z + aabb.size.z * 0.35
+	var ground_y := aabb.position.y + 0.05
+	_spray_l = _make_emitter()
+	_spray_r = _make_emitter()
+	_spray_l.position = Vector3(center.x - wheel_x, ground_y, rear_z)
+	_spray_r.position = Vector3(center.x + wheel_x, ground_y, rear_z)
+	add_child(_spray_l)
+	add_child(_spray_r)
+
+
+func _mesh_aabb() -> AABB:
+	# Combined AABB of the model's meshes, expressed in this body's local space.
+	var out := AABB()
+	var first := true
+	for node in _find_meshes(_mesh):
+		var mi: MeshInstance3D = node
+		var local_xform: Transform3D = global_transform.affine_inverse() * mi.global_transform
+		var box: AABB = local_xform * mi.get_aabb()
+		if first:
+			out = box
+			first = false
+		else:
+			out = out.merge(box)
+	return out
+
+
+func _find_meshes(n: Node, acc: Array = []) -> Array:
+	if n is MeshInstance3D:
+		acc.append(n)
+	for c in n.get_children():
+		_find_meshes(c, acc)
+	return acc
+
+
+func _make_emitter() -> GPUParticles3D:
+	# A short-lived burst of sand grains thrown backward and up. Built entirely in
+	# code: process material + draw pass, no editor resources.
+	var p := GPUParticles3D.new()
+	p.amount = 192
+	p.lifetime = 0.18  # short life keeps the trail tight behind the wheels
+	p.local_coords = false  # leave grains in world space so the trail lags behind
+	p.emitting = false
+
+	var mat := ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	# Long along the travel axis (+Z, rearward): at full speed the emitter jumps
+	# ~0.37 m/frame, so a point emitter leaves gaps between per-frame batches. A
+	# streak longer than that gap makes consecutive frames overlap into a
+	# continuous plume without needing a longer (and thus longer-tailed) lifetime.
+	mat.emission_box_extents = Vector3(0.1, 0.04, 0.3)
+	# Direction is in the emitter's frame (it inherits the body's yaw): +Z is
+	# rearward, +Y up, so the spray always fans out behind the car.
+	mat.direction = Vector3(0.0, 0.6, 1.0)
+	mat.spread = 25.0
+	mat.initial_velocity_min = 2.5
+	mat.initial_velocity_max = 4.5
+	mat.gravity = Vector3(0.0, -9.8, 0.0)
+	mat.damping_min = 1.0
+	mat.damping_max = 2.0
+	mat.scale_min = 0.3
+	mat.scale_max = 0.8
+	mat.angle_min = -180.0
+	mat.angle_max = 180.0
+	# Warm sand that fades to nothing over the grain's life.
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(0.85, 0.72, 0.48, 0.9))
+	ramp.set_color(1, Color(0.80, 0.66, 0.42, 0.0))
+	var ramp_tex := GradientTexture1D.new()
+	ramp_tex.gradient = ramp
+	mat.color_ramp = ramp_tex
+	p.process_material = mat
+
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.12, 0.12)
+	var qmat := StandardMaterial3D.new()
+	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	qmat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qmat.billboard_keep_scale = true  # without this, billboarding discards scale_min/max
+	# A soft round grain, not a hard square: a radial alpha falloff sprite.
+	qmat.albedo_texture = _grain_texture()
+	qmat.vertex_color_use_as_albedo = true  # let the per-particle ramp tint/fade it
+	quad.material = qmat
+	p.draw_pass_1 = quad
+	return p
+
+
+func _grain_texture() -> ImageTexture:
+	# Small white sprite with a soft radial alpha falloff, so each particle reads
+	# as a soft round grain of sand rather than a flat square.
+	var n := 32
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var c := (n - 1) * 0.5
+	for y in n:
+		for x in n:
+			var d := Vector2(x - c, y - c).length() / c
+			var a := clampf(1.0 - d, 0.0, 1.0)
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a * a))
+	return ImageTexture.create_from_image(img)
+
+
+func _set_spray(active: bool, intensity: float = 0.0) -> void:
+	if _spray_l == null:
+		return
+	_spray_l.emitting = active
+	_spray_r.emitting = active
+	if active:
+		var r := clampf(intensity, 0.2, 1.0)
+		_spray_l.amount_ratio = r
+		_spray_r.amount_ratio = r

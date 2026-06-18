@@ -37,6 +37,7 @@ func _run() -> void:
 	await _test_handling_unchanged()
 	await _test_air_righting()
 	await _test_camera_steady()
+	await _test_sand_spray()
 	await _test_pause()
 
 	print("\n==== RESULT ====")
@@ -310,6 +311,43 @@ func _test_camera_steady() -> void:
 		max_step < 0.12, "max_step=%.4f rad/tick" % max_step)
 	_check("Camera: keeps the car framed while turning (stays ahead of camera)",
 		max_frame_angle < 1.0, "max_frame_angle=%.3f rad" % max_frame_angle)
+
+
+func _test_sand_spray() -> void:
+	# The spray look isn't headless-verifiable, but its gating is: two emitters
+	# exist, and they emit only when grounded and moving (off when stopped/airborne).
+	var emitters: Array = []
+	for c in car.get_children():
+		if c is GPUParticles3D:
+			emitters.append(c)
+	_check("Spray: two rear-wheel emitters exist", emitters.size() == 2, "count=%d" % emitters.size())
+	if emitters.size() != 2:
+		return
+
+	_reset()
+	await _steps(5)
+	_check("Spray: off while stationary", not emitters[0].emitting and not emitters[1].emitting,
+		"l=%s r=%s" % [emitters[0].emitting, emitters[1].emitting])
+
+	_reset()
+	Input.action_press("accelerate", 1.0)
+	await _steps(60)
+	_check("Spray: on while driving on the ground", emitters[0].emitting and emitters[1].emitting,
+		"l=%s r=%s" % [emitters[0].emitting, emitters[1].emitting])
+	_release()
+
+	# Launch off the crest and confirm the spray cuts out while airborne.
+	_reset(Vector3(40, 0, 52.5))
+	Input.action_press("accelerate", 1.0)
+	var sprayed_airborne := false
+	for i in 240:
+		await physics_frame
+		var p := car.global_position
+		var clear := p.y - Dune.height(p.x, p.z)
+		if clear > 0.8 and not car.is_on_floor() and (emitters[0].emitting or emitters[1].emitting):
+			sprayed_airborne = true
+	_release()
+	_check("Spray: off while airborne", not sprayed_airborne, "sprayed_airborne=%s" % sprayed_airborne)
 
 
 func _test_pause() -> void:
