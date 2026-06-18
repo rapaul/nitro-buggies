@@ -44,6 +44,7 @@ var _mesh: Node3D
 var _mesh_scale := Vector3.ONE          ## preserved so re-setting the basis never rescales the model
 var _mesh_q := Quaternion.IDENTITY      ## mesh rotation this tick
 var _mesh_q_prev := Quaternion.IDENTITY ## mesh rotation last tick (for takeoff angular momentum)
+var _mesh_y_offset := 0.0               ## eased local-Y drop that seats the mesh on the terrain
 var _air_angvel := Vector3.ZERO         ## tumble carried into the air at takeoff
 var _air_time := 0.0                    ## seconds since takeoff
 var _was_airborne := false
@@ -193,6 +194,10 @@ func _update_orientation(delta: float) -> void:
 	# carry the takeoff tumble but right toward wheels-down so it always lands flat.
 	if _mesh == null:
 		return
+	# Read the air->ground transition before the rotation block resets it, so the
+	# vertical grounding offset can firm-seat on the landing tick the same way the
+	# rotation does (rather than easing through a transient gap).
+	var landing := is_on_floor() and _was_airborne
 	var q: Quaternion
 	if is_on_floor():
 		var target := _ground_target_local().get_rotation_quaternion()
@@ -222,6 +227,22 @@ func _update_orientation(delta: float) -> void:
 	_set_mesh_rotation(q)
 	_mesh_q_prev = _mesh_q
 	_mesh_q = q
+
+	# Seat the mesh on the sand. The flat box collision rests on its uphill edge on
+	# a slope, propping the body (and this mesh) up to ~0.4 m above the surface
+	# beneath the car, so it floats off its shadow. Sample the surface from the same
+	# DuneHeight source the terrain and collision use and drop the mesh's local Y so
+	# its base meets the ground. Visual only — the physics body keeps yaw-only,
+	# floor-snapped handling. Grounded only; airborne the offset eases back to 0 so
+	# the mesh rides the body's ballistic height, then firm-seats on landing.
+	var off_target := 0.0
+	if is_on_floor():
+		off_target = DuneHeight.height(global_position.x, global_position.z) - global_position.y
+	if landing:
+		_mesh_y_offset = off_target
+	else:
+		_mesh_y_offset = lerpf(_mesh_y_offset, off_target, clampf(tilt_smoothing * delta, 0.0, 1.0))
+	_mesh.position.y = _mesh_y_offset
 
 
 func _ground_target_local() -> Basis:

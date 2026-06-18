@@ -13,6 +13,7 @@ Validate the project headlessly, without the editor:
 - `godot --headless --import` — import assets; must finish with no error/warning.
 - `godot --headless -s tools/drive_test.gd` — behavioral test harness: loads `Main.tscn`, drives via `Input.action_press`, asserts accel/reverse/steer/drift/frame-rate-independence/camera-follow/pause. Prints PASS/FAIL, exits 1 on failure.
 - `godot --headless -s tools/inspect_car.gd` — prints the car mesh AABB (scale/orientation).
+- `godot --headless -s tools/ground_test.gd` — asserts the visual car mesh rests on the `DuneHeight` surface (no float/sink) on flat/sloped/valley ground, and isn't pinned down while airborne. Prints PASS/FAIL, exits 1 on failure.
 - `godot --headless -s tools/landing_test.gd` — landing-screen smoke + ENTER→scene-change.
 
 Headless input still propagates — `Input.parse_input_event(InputEventAction…)` reaches `_unhandled_input`, so behavior like ENTER → scene-change is testable headless even though pixels aren't.
