@@ -31,3 +31,21 @@ godot --rendering-driver opengl3 -s tools/landing_shot.gd -- --shot=/tmp/x.png
 ```
 
 Then read the PNG to view it. Default window is 1152x648.
+
+## Web export
+
+A `Web` export preset (`export_presets.cfg`) targets `build/web/` (gitignored). It's single-threaded — the project uses `gl_compatibility` (→ WebGL2), so no COOP/COEP cross-origin-isolation headers are needed to serve it.
+
+Web export templates must be installed at `~/.local/share/godot/export_templates/4.6.stable/` (download `Godot_v4.6-stable_export_templates.tpz` from the GitHub release and unzip its `templates/` contents there). Then:
+
+```
+godot --headless --export-release "Web" build/web/index.html
+```
+
+To test the build, serve it over HTTP and load it in a browser (it boots from `index.html`, ~37 MB wasm):
+
+```
+python3 -m http.server 8765 --bind 127.0.0.1 --directory build/web
+```
+
+Headless Chromium (Playwright, WebGL2 via `--use-gl=angle --use-angle=swiftshader`) can drive it for an automated boot test: wait for the `<canvas>` to size and the `#status` overlay to hide, capture `page.on('console')`, then screenshot. Keyboard input reaches the engine after clicking the canvas (e.g. ENTER advances the landing screen into the driving scene). Gamepad analog input still needs a human.
