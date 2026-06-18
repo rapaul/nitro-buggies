@@ -2,6 +2,10 @@
 
 Project-specific guidance for nitro-buggies (Godot 4.6, GDScript). Godot 4.6 stable is installed at `~/.local/bin/godot` (downloaded from the GitHub release; not on PATH in non-login shells — use the full path).
 
+## Git workflow
+
+Always push directly to `main` — no PRs. Feature branches may be used for in-progress work, but land them by fast-forwarding `main` and pushing to origin.
+
 ## Verifying changes
 
 Validate the project headlessly, without the editor:
