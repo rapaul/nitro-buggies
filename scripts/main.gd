@@ -9,6 +9,7 @@ const CameraScript := preload("res://scripts/camera.gd")
 const PickupScript := preload("res://scripts/pickup.gd")
 const FireballScript := preload("res://scripts/fireball.gd")
 const HUDScript := preload("res://scripts/hud.gd")
+const AIDriverScript := preload("res://scripts/ai_driver.gd")
 
 const HALF := 100.0       ## play area extends +/- this on X and Z (200x200)
 const MESH_STEP := 2.0    ## visual grid spacing (m); collision is finer (1m)
@@ -16,6 +17,7 @@ const SAND := Color(0.80, 0.60, 0.34)
 const FALL_LIMIT := 1.0   ## seconds off the edge before the car respawns
 const RESPAWN_HEIGHT := 20.0  ## metres above the centre ground to respawn at
 const PLAYER_SPAWN_X := 4.0   ## each 2P car spawns this far either side of centre
+const AI_SPAWN := Vector2(25.0, 25.0)  ## single-player AI opponent spawn (x, z), clear of the player
 
 # Eight fixed pickup spots — [x, z, item] — scattered clear of the centre spawn,
 # each seated on the dune surface. Each spot respawns its own item after a delay.
@@ -42,6 +44,11 @@ var _huds: Array = []
 var _hud_layer: CanvasLayer
 var _match_over := false
 
+# Single-player AI opponent: the live pickup nodes it chooses from, and its
+# behaviour controller (null in two-player).
+var _pickups: Array = []
+var _ai_driver: Node = null
+
 
 func _ready() -> void:
 	_build_terrain()
@@ -61,9 +68,42 @@ func _setup_single_player() -> void:
 	$Camera3D.target = $Car
 	_cars = [$Car]
 	_fall_times = [0.0]
-	# Full-screen HUD over the single view.
+	# Full-screen HUD over the single view (player only — the AI has no HUD).
 	var vp := get_viewport().get_visible_rect().size
 	_setup_huds([$Car], [Rect2(Vector2.ZERO, vp)])
+	if Selection.ai_opponent:
+		_spawn_ai_opponent($Car)
+
+
+func _spawn_ai_opponent(player_car: Car) -> void:
+	# A computer-driven opponent sharing the world. It is a full car — damageable,
+	# eliminable, and recovered by the off-edge respawn like the player — but it has
+	# no HUD: its health is intentionally not shown in single-player. The chase
+	# camera still follows only the player's car (set above).
+	var ai_car: CharacterBody3D = CarScene.instantiate()
+	ai_car.ai_controlled = true
+	# Set the spawn before entering the tree so its physics body registers there,
+	# not co-located with the player at the origin (two overlapping CharacterBody3D
+	# bodies depenetrate explosively on the first move_and_slide). main is at the
+	# origin with no transform, so position == global_position here.
+	ai_car.position = Vector3(AI_SPAWN.x, Dune.height(AI_SPAWN.x, AI_SPAWN.y) + 1.0, AI_SPAWN.y)
+	ai_car.velocity = Vector3.ZERO
+	add_child(ai_car)
+
+	_cars.append(ai_car)
+	_fall_times.append(0.0)
+
+	# Its fireballs spawn into the shared world, and its elimination ends the match
+	# with the player as winner. The player's HUD is index 0; the no-HUD AI is the
+	# notional loser index 1, so _on_car_eliminated shows WINNER on the player view.
+	ai_car.fired_fireball.connect(_on_fired_fireball.bind(ai_car))
+	ai_car.eliminated.connect(_on_car_eliminated.bind(1))
+
+	_ai_driver = AIDriverScript.new()
+	_ai_driver.car = ai_car
+	_ai_driver.player = player_car
+	_ai_driver.pickups = _pickups  # same array _spawn_pickups fills, by reference
+	add_child(_ai_driver)
 
 
 func _setup_two_players() -> void:
@@ -156,6 +196,7 @@ func _spawn_pickups() -> void:
 		pickup.item = spot[2]
 		add_child(pickup)
 		pickup.global_position = Vector3(x, Dune.height(x, z) + 1.0, z)
+		_pickups.append(pickup)
 
 
 func _on_fired_fireball(origin: Vector3, heading: Vector3, shooter: Node) -> void:
@@ -182,6 +223,8 @@ func _on_car_eliminated(loser: int) -> void:
 	for car in _cars:
 		car.set_physics_process(false)
 		car.set_process(false)
+	if _ai_driver:
+		_ai_driver.active = false  # stop the AI driving under the WASTED/WINNER overlay
 
 
 func _process(delta: float) -> void:

@@ -13,3 +13,9 @@ var player_count := 1
 ## Player 2's chosen vehicle (used only when player_count == 2). Player 1 uses
 ## selected_model_path above.
 var player2_model_path := "res://assets/race.glb"
+
+## Whether single-player spawns a computer-driven opponent car (see ai_driver.gd).
+## The landing screen turns this on when "1P" is confirmed. It defaults to false
+## so launching Main.tscn directly (the headless single-player tests) keeps a
+## single-car, deterministic scene with no AI.
+var ai_opponent := false

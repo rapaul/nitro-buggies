@@ -59,6 +59,16 @@ var _nitro_time := 0.0   ## seconds of nitro boost remaining
 ## actions); "p2_" for Player 2's arrow-key set in split-screen.
 @export var input_prefix := ""
 
+## When true, this car ignores the InputMap and reads its controls from the
+## ai_throttle/ai_steer/ai_handbrake fields below (driven by ai_driver.gd in
+## single-player). The values use the same convention as the InputMap reads:
+## throttle in [-1, 1] (1 = full accelerate, -1 = full brake/reverse), steer
+## positive = right (matching get_axis(steer_left, steer_right)).
+var ai_controlled := false
+var ai_throttle := 0.0
+var ai_steer := 0.0
+var ai_handbrake := false
+
 ## Vehicle model to render. Empty means use the landing-screen selection
 ## (Selection.selected_model_path) — the default and single-player path. Set
 ## per-car (e.g. Player 2's pick) before the node enters the tree to override it.
@@ -220,9 +230,17 @@ func _physics_process(delta: float) -> void:
 
 	# Device-agnostic analog input. Keyboard keys report full magnitude,
 	# gamepad axes report proportional magnitude — both for free via get_axis.
-	var throttle := Input.get_axis(input_prefix + "brake", input_prefix + "accelerate")
-	var steer_input := Input.get_axis(input_prefix + "steer_left", input_prefix + "steer_right")
-	var handbraking := Input.is_action_pressed(input_prefix + "handbrake")
+	var throttle: float
+	var steer_input: float
+	var handbraking: bool
+	if ai_controlled:
+		throttle = ai_throttle
+		steer_input = ai_steer
+		handbraking = ai_handbrake
+	else:
+		throttle = Input.get_axis(input_prefix + "brake", input_prefix + "accelerate")
+		steer_input = Input.get_axis(input_prefix + "steer_left", input_prefix + "steer_right")
+		handbraking = Input.is_action_pressed(input_prefix + "handbrake")
 
 	var forward := -global_transform.basis.z
 	var forward_speed := velocity.dot(forward)

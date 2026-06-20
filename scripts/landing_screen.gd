@@ -170,6 +170,8 @@ func _build_mode_stage() -> void:
 func _mode_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_accept"):
 		Selection.player_count = _mode_selected + 1
+		# Single-player races an AI opponent; two-player is two humans.
+		Selection.ai_opponent = (Selection.player_count == 1)
 		_transition_to_pick()
 	elif event.is_action_pressed("ui_left"):
 		_move_mode(-1)
