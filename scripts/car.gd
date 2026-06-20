@@ -1,8 +1,27 @@
+class_name Car
 extends CharacterBody3D
 ## Arcade car handling for the top-down prototype.
 ##
 ## Reads device-agnostic InputMap actions (never raw device codes) and
 ## integrates all motion in _physics_process for frame-rate independence.
+
+# --- Pickups / combat ---
+## The item a car can be holding. NONE means empty (nothing to use).
+enum Item { NONE, NITRO, FIREBALL }
+
+signal held_item_changed(item: int)  ## fires whenever the held item changes
+signal health_changed(health: int)   ## fires whenever the health bar count changes
+signal eliminated                     ## fires once when health reaches zero
+signal fired_fireball(origin: Vector3, heading: Vector3)  ## main.gd spawns the projectile
+
+const MAX_HEALTH := 3
+const NITRO_DURATION := 5.0   ## seconds a nitro boost lasts
+const NITRO_MULTIPLIER := 2.0 ## top-speed/acceleration factor while boosting
+const FIREBALL_SPAWN_AHEAD := 2.5  ## metres ahead of the body to spawn a fireball (clears the nose)
+
+var held_item := Item.NONE
+var health := MAX_HEALTH
+var _nitro_time := 0.0   ## seconds of nitro boost remaining
 
 # --- Longitudinal tuning ---
 @export var max_forward_speed := 22.0   ## m/s cap when driving forward
@@ -116,7 +135,58 @@ func respawn(pos: Vector3) -> void:
 	_air_angvel = Vector3.ZERO
 
 
+# --- Pickups / combat ---
+
+func collect(item: int) -> bool:
+	# Grant a pickup only if the car isn't already holding one (no replacement).
+	# Returns whether the item was taken, so the pickup knows to disappear.
+	if held_item != Item.NONE:
+		return false
+	held_item = item
+	held_item_changed.emit(held_item)
+	return true
+
+
+func take_damage(amount: int) -> void:
+	# Remove health bars (clamped at zero). Reaching zero eliminates the car once.
+	if health <= 0:
+		return
+	health = maxi(health - amount, 0)
+	health_changed.emit(health)
+	if health == 0:
+		eliminated.emit()
+
+
+func use_item() -> void:
+	# Activate the held pickup and clear it (the box goes empty). No-op when empty.
+	if held_item == Item.NONE:
+		return
+	var item := held_item
+	held_item = Item.NONE
+	held_item_changed.emit(held_item)
+	match item:
+		Item.NITRO:
+			_nitro_time = NITRO_DURATION
+		Item.FIREBALL:
+			# main.gd owns the shared world, so it spawns the projectile there (so
+			# the fireball can hit the other car). Launch from just ahead of the nose.
+			var heading := -global_transform.basis.z
+			heading.y = 0.0
+			heading = heading.normalized()
+			fired_fireball.emit(global_position + heading * FIREBALL_SPAWN_AHEAD, heading)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# Per-player use action (input_prefix keeps Player 1 / Player 2 independent).
+	if event.is_action_pressed(input_prefix + "use_item"):
+		use_item()
+
+
 func _physics_process(delta: float) -> void:
+	# Tick down any active nitro boost regardless of grounded/airborne state.
+	if _nitro_time > 0.0:
+		_nitro_time = maxf(_nitro_time - delta, 0.0)
+
 	if not is_on_floor():
 		# Airborne: pure ballistic arc. Throttle, steering, and grip are all
 		# ignored — horizontal velocity is frozen and only gravity acts. Re-grounds
@@ -157,9 +227,13 @@ func _physics_process(delta: float) -> void:
 	var forward := -global_transform.basis.z
 	var forward_speed := velocity.dot(forward)
 
+	# Nitro: while active, the forward cap and forward acceleration are doubled so
+	# the car can both reach and hold the higher top speed. Reverse is unaffected.
+	var boost := NITRO_MULTIPLIER if _nitro_time > 0.0 else 1.0
+
 	# --- Longitudinal: accelerate / coast / brake / reverse ---
 	if throttle > 0.0:
-		forward_speed += acceleration * throttle * delta
+		forward_speed += acceleration * boost * throttle * delta
 	elif throttle < 0.0:
 		if forward_speed > 0.1:
 			# Brake: scale with how hard the brake is applied (throttle is negative).
@@ -171,7 +245,7 @@ func _physics_process(delta: float) -> void:
 		# No input: engine drag pulls speed toward zero.
 		forward_speed = move_toward(forward_speed, 0.0, engine_drag * delta)
 
-	forward_speed = clampf(forward_speed, -max_reverse_speed, max_forward_speed)
+	forward_speed = clampf(forward_speed, -max_reverse_speed, max_forward_speed * boost)
 
 	# --- Steering: effectiveness scales with speed, so no pivot at standstill ---
 	var speed_factor := clampf(absf(forward_speed) / steer_speed_ref, 0.0, 1.0)

@@ -6,6 +6,9 @@ extends Node3D
 const Dune := preload("res://scripts/dune_height.gd")
 const CarScene := preload("res://scenes/Car.tscn")
 const CameraScript := preload("res://scripts/camera.gd")
+const PickupScript := preload("res://scripts/pickup.gd")
+const FireballScript := preload("res://scripts/fireball.gd")
+const HUDScript := preload("res://scripts/hud.gd")
 
 const HALF := 100.0       ## play area extends +/- this on X and Z (200x200)
 const MESH_STEP := 2.0    ## visual grid spacing (m); collision is finer (1m)
@@ -14,11 +17,30 @@ const FALL_LIMIT := 1.0   ## seconds off the edge before the car respawns
 const RESPAWN_HEIGHT := 20.0  ## metres above the centre ground to respawn at
 const PLAYER_SPAWN_X := 4.0   ## each 2P car spawns this far either side of centre
 
+# Eight fixed pickup spots — [x, z, item] — scattered clear of the centre spawn,
+# each seated on the dune surface. Each spot respawns its own item after a delay.
+const PICKUP_SPOTS := [
+	[-40.0, -40.0, Car.Item.NITRO],
+	[40.0, -40.0, Car.Item.FIREBALL],
+	[-40.0, 40.0, Car.Item.FIREBALL],
+	[40.0, 40.0, Car.Item.NITRO],
+	[0.0, -55.0, Car.Item.FIREBALL],
+	[0.0, 55.0, Car.Item.NITRO],
+	[-55.0, 0.0, Car.Item.NITRO],
+	[55.0, 0.0, Car.Item.FIREBALL],
+]
+
 # Active cars and a per-car fall timer (parallel arrays). One entry in
 # single-player, two in split-screen, so the off-edge respawn handles each
 # independently.
 var _cars: Array[CharacterBody3D] = []
 var _fall_times: Array[float] = []
+
+# Per-player HUDs (parallel to _cars) on a shared overlay layer, plus the
+# one-shot match-over latch that drives the WASTED / WINNER overlays.
+var _huds: Array = []
+var _hud_layer: CanvasLayer
+var _match_over := false
 
 
 func _ready() -> void:
@@ -29,6 +51,7 @@ func _ready() -> void:
 		_setup_two_players()
 	else:
 		_setup_single_player()
+	_spawn_pickups()
 
 
 func _setup_single_player() -> void:
@@ -38,6 +61,9 @@ func _setup_single_player() -> void:
 	$Camera3D.target = $Car
 	_cars = [$Car]
 	_fall_times = [0.0]
+	# Full-screen HUD over the single view.
+	var vp := get_viewport().get_visible_rect().size
+	_setup_huds([$Car], [Rect2(Vector2.ZERO, vp)])
 
 
 func _setup_two_players() -> void:
@@ -64,6 +90,12 @@ func _setup_two_players() -> void:
 	add_child(layer)
 	_add_player_view(layer, car1, 0.0, 0.5)
 	_add_player_view(layer, car2, 0.5, 1.0)
+
+	# Per-player HUDs over each half, using the same split rects as the views.
+	var vp := get_viewport().get_visible_rect().size
+	var top_rect := Rect2(0.0, 0.0, vp.x, vp.y * 0.5)
+	var bot_rect := Rect2(0.0, vp.y * 0.5, vp.x, vp.y * 0.5)
+	_setup_huds([car1, car2], [top_rect, bot_rect])
 
 
 func _place_car(car: CharacterBody3D, x: float) -> void:
@@ -97,6 +129,59 @@ func _add_player_view(parent: CanvasLayer, car: CharacterBody3D, top: float, bot
 	cam.target = car
 	cam.current = true
 	viewport.add_child(cam)
+
+
+func _setup_huds(cars: Array, rects: Array) -> void:
+	# One HUD per player on a shared overlay layer (drawn above the 3D views).
+	# Also routes each car's fireball spawn and elimination through main, which
+	# owns the shared world and the match-over state.
+	_hud_layer = CanvasLayer.new()
+	add_child(_hud_layer)
+	for i in cars.size():
+		var car: Car = cars[i]
+		var hud := HUDScript.new()
+		_hud_layer.add_child(hud)
+		hud.setup(car, rects[i])
+		_huds.append(hud)
+		car.fired_fireball.connect(_on_fired_fireball.bind(car))
+		car.eliminated.connect(_on_car_eliminated.bind(i))
+
+
+func _spawn_pickups() -> void:
+	# One pickup per fixed spot, seated on the dune surface.
+	for spot in PICKUP_SPOTS:
+		var x: float = spot[0]
+		var z: float = spot[1]
+		var pickup: Area3D = PickupScript.new()
+		pickup.item = spot[2]
+		add_child(pickup)
+		pickup.global_position = Vector3(x, Dune.height(x, z) + 1.0, z)
+
+
+func _on_fired_fireball(origin: Vector3, heading: Vector3, shooter: Node) -> void:
+	# Spawn the projectile into the shared world (a sibling of the cars) so it can
+	# strike the other car. The shooter is recorded so it can't hit itself.
+	var fireball: Area3D = FireballScript.new()
+	fireball.owner_car = shooter
+	fireball.heading = heading
+	add_child(fireball)
+	fireball.global_position = origin
+
+
+func _on_car_eliminated(loser: int) -> void:
+	# First car to lose all its bars ends the match: WASTED on its view, WINNER on
+	# every other, and gameplay freezes.
+	if _match_over:
+		return
+	_match_over = true
+	for i in _huds.size():
+		if i == loser:
+			_huds[i].show_wasted()
+		else:
+			_huds[i].show_winner()
+	for car in _cars:
+		car.set_physics_process(false)
+		car.set_process(false)
 
 
 func _process(delta: float) -> void:
