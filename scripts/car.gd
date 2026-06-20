@@ -34,6 +34,17 @@ extends CharacterBody3D
 @export var tilt_smoothing := 8.0       ## how fast the mesh eases to the terrain slope while grounded
 @export var air_righting := 2.5         ## airborne self-righting strength (grows over the flight)
 
+# --- Controls ---
+## Prefix prepended to the InputMap action names this car reads. Empty for
+## Player 1 (the existing accelerate/brake/steer_left/steer_right/handbrake
+## actions); "p2_" for Player 2's arrow-key set in split-screen.
+@export var input_prefix := ""
+
+## Vehicle model to render. Empty means use the landing-screen selection
+## (Selection.selected_model_path) — the default and single-player path. Set
+## per-car (e.g. Player 2's pick) before the node enters the tree to override it.
+@export var model_path := ""
+
 var _prev_climb := false                ## was the car ascending a slope last tick?
 
 # Visual mesh orientation state. The CharacterBody3D rotates on Y only; the mesh
@@ -67,7 +78,8 @@ func _ready() -> void:
 	# Swap the visual mesh to the vehicle chosen on the landing screen. The
 	# collision shape is intentionally left as-is for v1. Falls back to the
 	# default model if the selected one fails to load.
-	var packed: PackedScene = load(Selection.selected_model_path)
+	var path := model_path if model_path != "" else Selection.selected_model_path
+	var packed: PackedScene = load(path)
 	if packed == null:
 		packed = load(FALLBACK_MODEL)
 	if packed == null:
@@ -91,6 +103,17 @@ func _ready() -> void:
 	_mesh_q = _mesh.transform.basis.get_rotation_quaternion()
 	_mesh_q_prev = _mesh_q
 	_setup_spray()
+
+
+func respawn(pos: Vector3) -> void:
+	# Return the car to a safe spawn point (see main.gd's fall-off-edge handling).
+	# Clear velocity so it doesn't keep the fall's momentum, and reset the airborne
+	# bookkeeping so it doesn't land carrying a stale takeoff tumble.
+	global_position = pos
+	velocity = Vector3.ZERO
+	_was_airborne = false
+	_air_time = 0.0
+	_air_angvel = Vector3.ZERO
 
 
 func _physics_process(delta: float) -> void:
@@ -127,9 +150,9 @@ func _physics_process(delta: float) -> void:
 
 	# Device-agnostic analog input. Keyboard keys report full magnitude,
 	# gamepad axes report proportional magnitude — both for free via get_axis.
-	var throttle := Input.get_axis("brake", "accelerate")
-	var steer_input := Input.get_axis("steer_left", "steer_right")
-	var handbraking := Input.is_action_pressed("handbrake")
+	var throttle := Input.get_axis(input_prefix + "brake", input_prefix + "accelerate")
+	var steer_input := Input.get_axis(input_prefix + "steer_left", input_prefix + "steer_right")
+	var handbraking := Input.is_action_pressed(input_prefix + "handbrake")
 
 	var forward := -global_transform.basis.z
 	var forward_speed := velocity.dot(forward)
